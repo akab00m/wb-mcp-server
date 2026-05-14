@@ -4,17 +4,3 @@ dist/
 *.js
 !tsup.config.ts
 !vitest.config.ts
-
-# Internal planning files — not for public repo
-WB_Agent_Gantt_Roadmap_v4.html
-TASKS.md
-VISION.md
-cast_dev/
-.claude/
-docs/
-test-api.mts
-audit/
-WB_Landing_Gantt.html
-TZ-WB-MCP-API-CHECK.md
-probe-new-endpoints.mts
-test-results.log
