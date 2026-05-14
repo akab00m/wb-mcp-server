@@ -31,11 +31,17 @@ MCP Client (Claude Desktop / любой MCP-совместимый агент)
 - **vitest** — тесты
 - **tsx** — dev-режим
 
-## Internal folders (gitignored, не для публичного репо)
+## Internal folder (gitignored, не для публичного репо)
 
-- `audit/` — read-only аудиты реальных магазинов (KOSIK и др.) через WB API. Скрипты выгрузки + правила анализа + JSON-дампы + отчёты. Используется для валидации продуктовых гипотез Артели (AI-финансист). См. `audit/README.md`.
-- `docs/` — личные материалы (showcase HTML, инструкции, заметки).
-- `cast_dev/`, `.claude/`, `WB_*Gantt*.html`, `TASKS.md`, `VISION.md` — личные планы и заметки.
+Все внутренние материалы собраны в `internal/` (игнорируется через `.git/info/exclude` — локально, имена не утекают в публичный `.gitignore`):
+
+- `internal/audit/` — read-only аудиты реальных магазинов (KOSIK и др.) через WB API. Скрипты выгрузки + правила анализа + JSON-дампы + отчёты. Валидация продуктовых гипотез AI-финансиста. См. `internal/audit/README.md`.
+- `internal/docs/` — личные материалы (showcase HTML, инструкции).
+- `internal/cast_dev/` — интервью customer discovery (содержат PII — НЕ публиковать).
+- `internal/TASKS.md`, `internal/VISION.md`, `internal/TZ-*.md` — планы, видение, ТЗ.
+- `internal/test-api.mts` — скрипт live-проверки всех MCP-методов на реальном WB API. Запуск: `npx tsx --env-file=.env internal/test-api.mts`.
+
+Также gitignored: `.claude/` (настройки Claude Code), `.env` (токен).
 
 ## Project Structure
 
