@@ -13,3 +13,8 @@ cast_dev/
 .claude/
 docs/
 test-api.mts
+audit/
+WB_Landing_Gantt.html
+TZ-WB-MCP-API-CHECK.md
+probe-new-endpoints.mts
+test-results.log

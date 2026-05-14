@@ -54,6 +54,42 @@ Create an API token in your [WB Seller Dashboard](https://seller.wildberries.ru/
 >
 > This commonly happens with the Microsoft Store version of Claude Desktop, which doesn't see the global npm packages path.
 
+## Updating to the latest version
+
+New versions are released regularly — for example, v0.3.0 added 5 new tools (prices, ad balance, inventory). The server does **not** auto-update — you need to update it manually.
+
+### Step 1. Update the package
+
+**If installed globally** (Claude Desktop config uses `"command": "wb-mcp-server"`):
+
+```bash
+npm install -g wb-mcp-server@latest
+```
+
+**If using `npx`** (Claude Desktop config uses `"command": "npx"`):
+
+```bash
+npx -y wb-mcp-server@latest
+```
+
+If `npx` keeps pulling an old cached version, clear the cache:
+
+```bash
+npm cache clean --force
+```
+
+### Step 2. Fully restart Claude Desktop
+
+Quit the app **from the system tray** (not just closing the window), then reopen it. Otherwise Claude will keep using the old server process.
+
+### Step 3. Verify the version
+
+```bash
+npm list -g wb-mcp-server
+```
+
+Or ask Claude: *"Which wb-mcp-server tools are available to you?"* — v0.3.0 should show 18 tools.
+
 ## Available Tools (18)
 
 ### Reviews & Questions

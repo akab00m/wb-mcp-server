@@ -31,6 +31,12 @@ MCP Client (Claude Desktop / любой MCP-совместимый агент)
 - **vitest** — тесты
 - **tsx** — dev-режим
 
+## Internal folders (gitignored, не для публичного репо)
+
+- `audit/` — read-only аудиты реальных магазинов (KOSIK и др.) через WB API. Скрипты выгрузки + правила анализа + JSON-дампы + отчёты. Используется для валидации продуктовых гипотез Артели (AI-финансист). См. `audit/README.md`.
+- `docs/` — личные материалы (showcase HTML, инструкции, заметки).
+- `cast_dev/`, `.claude/`, `WB_*Gantt*.html`, `TASKS.md`, `VISION.md` — личные планы и заметки.
+
 ## Project Structure
 
 ```
@@ -105,7 +111,7 @@ export const BASE_URLS = {
 ### Версионирование:
 - **v0.1.0** — реализовано и опубликовано (10 инструментов)
 - **v0.2.0** — MVP-блокер для wb-seller-agent (+3 инструмента = 13)
-- **v0.3.0** — Phase 2: Ads + Supply агенты (+5 инструментов = 18)
+- **v0.3.0** — Phase 2: Ads + Supply агенты (+5 инструментов = 18) ✅ **все 18 проверены на живом WB API 2026-04-23**
 - **v0.4.0** — Phase 3: контент, поставки, документы, аналитика (+4 инструмента = 22)
 
 ---
@@ -123,10 +129,11 @@ Returns: Array<{ id, text, productValuation, answer, createdDate, productDetails
 #### reply_feedback ✅ v0.1.0
 ```
 Description: "⚠️ ОТВЕТИТЬ на отзыв. Отправляет реальный ответ покупателю. Редактировать можно 1 раз в 60 дней."
-WB Endpoint: PATCH https://feedbacks-api.wildberries.ru/api/v1/feedbacks
+WB Endpoint: POST https://feedbacks-api.wildberries.ru/api/v1/feedbacks/answer
 Токен: Feedbacks
 ```
 Input: id (string), text (string, min 1)
+Returns: HTTP 204 No Content при успехе.
 
 #### get_unanswered_count ✅ v0.1.0
 ```
@@ -154,13 +161,16 @@ Input: id (string), text (string, min 1)
 
 ### statistics.ts — Статистика
 
-#### get_stocks ✅ v0.1.0
+#### get_stocks ✅ v0.3.1
 ```
-WB Endpoint: GET https://statistics-api.wildberries.ru/api/v1/supplier/stocks
-Rate limit: 1 req/min. Токен: Statistics
+WB Endpoint: POST https://seller-analytics-api.wildberries.ru/api/analytics/v1/stocks-report/wb-warehouses
+Rate limit: 1 req/min. Токен: Analytics
 ```
-Input: dateFrom (ISO date)
-Pagination: если 60000 строк — есть ещё, использовать lastChangeDate последней строки.
+Input: limit (default 1000, max 1000), offset (default 0)
+Body: { limit, offset }
+Returns: { data: { items: [{ nmId, chrtId, warehouseId, warehouseName, regionName, quantity, inWayToClient, inWayFromClient }] } }
+Pagination: если получено limit строк — есть ещё, использовать offset += limit.
+⚠️ Старый GET /api/v1/supplier/stocks отключён WB 23.06.2026 — мигрировано на новый POST-метод.
 
 #### get_orders ✅ v0.1.0
 ```
@@ -176,16 +186,18 @@ Rate limit: 1 req/min. Токен: Statistics
 ```
 Input: аналогично get_orders
 
-#### get_financial_report 🔧 v0.2.0
+#### get_financial_report ✅ v0.3.1
 ```
 Description: "Детализация отчёта реализации: комиссии WB, логистика, хранение, штрафы, сумма к оплате.
 Используй для расчёта реального P&L. Лимит: 1 req/min."
-WB Endpoint: GET https://statistics-api.wildberries.ru/api/v5/supplier/reportDetailByPeriod
-Rate limit: 1 req/min. Токен: Statistics
+WB Endpoint: POST https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed
+Rate limit: 1 req/min (global limiter per seller). Токен: Finance
 ```
-Input: dateFrom (ISO datetime), dateTo (ISO datetime), limit (default 100000), rrdid (default 0), period ("weekly"|"daily")
-Pagination: если 100000 строк — делать следующий запрос с rrdid = rrd_id последней строки. Статус 204 = данных больше нет.
-Ключевые поля: ppvz_for_pay, delivery_rub, storage_fee, penalty, commission_percent, retail_amount
+Input: dateFrom (YYYY-MM-DD), dateTo (YYYY-MM-DD)
+Body: { dateFrom, dateTo }
+Returns: массив строк. Поля в camelCase, денежные значения — строки.
+Ключевые поля: forPay (сумма к выплате), deliveryService (логистика), paidStorage (хранение), penalty (штрафы), commissionPercent (комиссия WB), retailAmount (розничная выручка), rrdId (ID строки).
+⚠️ Старый GET /api/v5/supplier/reportDetailByPeriod отключён WB 15.07.2026 — мигрировано на новый POST-метод (snake_case → camelCase, деньги стали строками).
 
 ---
 
@@ -193,23 +205,24 @@ Pagination: если 100000 строк — делать следующий за�
 
 #### get_nm_report ✅ v0.1.0
 ```
-WB Endpoint: POST https://seller-analytics-api.wildberries.ru/api/v2/nm-report/detail
+WB Endpoint: POST https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products
 Токен: Analytics
 ```
-Input: beginDate (ISO), endDate (ISO), page (default 1)
-Body: { period: { begin, end }, page }
+Input: beginDate (ISO), endDate (ISO), page (default 1), nmIds (optional)
+Body: { selectedPeriod: { start, end }, pageNumber, pageSize, nmIds? }
+Returns: { data: { products: [{ product: { nmId, title, brandName, ... }, statistic: { selected: { openCount, cartCount, orderCount, buyoutCount, orderSum, ... } } }] } }
 
-#### get_warehouses_inventory ⏳ v0.3.0
+#### get_warehouses_inventory ✅ v0.3.0
 ```
 Description: "Актуальный отчёт по остаткам. Точнее get_stocks для оперативного управления.
 Асинхронный: создать задачу → polling статуса → скачать результат."
-WB Endpoint (создать): GET https://statistics-api.wildberries.ru/api/v1/warehouse_remains
-WB Endpoint (статус):  GET .../tasks/{task_id}/status
-WB Endpoint (скачать): GET .../tasks/{task_id}/download
-Токен: Statistics
+WB Endpoint (создать): GET https://seller-analytics-api.wildberries.ru/api/v1/warehouse_remains
+WB Endpoint (статус):  GET https://seller-analytics-api.wildberries.ru/api/v1/warehouse_remains/tasks/{task_id}/status
+WB Endpoint (скачать): GET https://seller-analytics-api.wildberries.ru/api/v1/warehouse_remains/tasks/{task_id}/download
+Токен: Analytics
 ```
-Input: нет обязательных.
-Реализация: создать → polling каждые 5 сек, макс 60 сек → скачать.
+Input: нет обязательных (groupByBrand/Subject/Nm/Barcode/Size, filterPics, filterVolume — опциональные).
+Реализация: создать → polling каждые 5 сек, макс 60 сек → скачать. Taskstatus → "done" обычно за 5 сек.
 
 #### search_analytics ⏳ v0.4.0
 ```
@@ -247,12 +260,13 @@ Returns: массив { type, status, count, advert_list: [{ advertId, changeTim
 
 #### get_advert_stats ✅ v0.1.0
 ```
-WB Endpoint: POST https://advert-api.wildberries.ru/adv/v3/fullstats
+WB Endpoint: POST https://advert-api.wildberries.ru/adv/v0/normquery/stats
 Токен: Promotion
 ```
-Input: campaignIds — array<number>, max 100.
+Input: from (YYYY-MM-DD), to (YYYY-MM-DD), items: array<{ advert_id: number, nm_id: number }>
+Returns: { stats: {...} | null } — статистика по поисковым кластерам (показы, клики, CTR, CPC, CPM, заказы).
 
-#### get_advert_balance ⏳ v0.3.0
+#### get_advert_balance ✅ v0.3.0
 ```
 WB Endpoint: GET https://advert-api.wildberries.ru/adv/v1/balance
 Токен: Promotion
@@ -260,7 +274,7 @@ WB Endpoint: GET https://advert-api.wildberries.ru/adv/v1/balance
 Input: нет.
 Returns: { balance: number, net: number, bonus: number }
 
-#### update_advert_bid ⏳ v0.3.0
+#### update_advert_bid ✅ v0.3.0
 ```
 Description: "⚠️ ИЗМЕНИТЬ ставку в кампании. Немедленно влияет на показы и расход бюджета.
 Только для кампаний в статусах 4, 9, 11."
@@ -273,7 +287,7 @@ Input: advertId (number), type (number), bids: array<{ nm: number, price: number
 
 ### prices.ts — Цены
 
-#### get_prices ⏳ v0.3.0
+#### get_prices ✅ v0.3.0
 ```
 WB Endpoint: GET https://discounts-prices-api.wildberries.ru/api/v2/list/goods/filter
 Токен: Prices
@@ -281,7 +295,7 @@ WB Endpoint: GET https://discounts-prices-api.wildberries.ru/api/v2/list/goods/f
 Input: limit (default 1000, max 1000), offset (default 0), filterNmID (optional)
 Returns: array<{ nmID, vendorCode, sizes: [{ price, discountedPrice, discount }] }>
 
-#### update_prices ⏳ v0.3.0
+#### update_prices ✅ v0.3.0
 ```
 Description: "⚠️ ИЗМЕНИТЬ цены и/или скидки. Изменения немедленно вступают в силу на WB."
 WB Endpoint: POST https://discounts-prices-api.wildberries.ru/api/v2/upload/task

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1 (2026-05-14)
+
+### API compatibility — миграция устаревающих endpoint'ов WB
+
+- **get_financial_report** — мигрирован с `GET /api/v5/supplier/reportDetailByPeriod` на `POST /api/finance/v1/sales-reports/detailed` (старый endpoint отключается WB 15.07.2026). Поля ответа теперь в camelCase, денежные значения — строки. Input: `dateFrom`, `dateTo` (YYYY-MM-DD).
+- **get_stocks** — мигрирован с `GET /api/v1/supplier/stocks` на `POST /api/analytics/v1/stocks-report/wb-warehouses` (старый endpoint отключается WB 23.06.2026). Возвращает остатки с разбивкой по складам и регионам. Input: `limit`, `offset` (вместо `dateFrom`).
+
+### Notes
+
+- Все 18 инструментов проверены на живом WB API 2026-05-14.
+- Документация endpoint'ов в CLAUDE.md синхронизирована с актуальным WB API.
+
 ## 0.3.0 (2026-04-14)
 
 ### Features
