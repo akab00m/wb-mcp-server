@@ -102,6 +102,7 @@ export const BASE_URLS = {
   content:    "https://content-api.wildberries.ru",
   marketplace:"https://marketplace-api.wildberries.ru",
   documents:  "https://documents-api.wildberries.ru",
+  common:     "https://common-api.wildberries.ru",
   feedbacks_sandbox: "https://feedbacks-api-sandbox.wildberries.ru",
 }
 ```
@@ -112,13 +113,14 @@ export const BASE_URLS = {
 
 ---
 
-## MCP Tools — полный реестр (22 инструмента)
+## MCP Tools — полный реестр (28 инструментов)
 
 ### Версионирование:
 - **v0.1.0** — реализовано и опубликовано (10 инструментов)
 - **v0.2.0** — MVP-блокер для wb-seller-agent (+3 инструмента = 13)
-- **v0.3.0** — Phase 2: Ads + Supply агенты (+5 инструментов = 18) ✅ **все 18 проверены на живом WB API 2026-04-23**
-- **v0.4.0** — Phase 3: контент, поставки, документы, аналитика (+4 инструмента = 22)
+- **v0.3.0** — Phase 2: Ads + Supply агенты (+5 инструментов = 18)
+- **v0.3.1** — миграция get_financial_report и get_stocks на новые endpoint'ы WB
+- **v0.4.0** — Phase 3: контент, поставки, документы, продавец, аналитика рейтинга, эквайринг (+10 инструментов = 28) ✅ **проверено на живом WB API 2026-05-25**
 
 ---
 
@@ -230,15 +232,20 @@ WB Endpoint (скачать): GET https://seller-analytics-api.wildberries.ru/ap
 Input: нет обязательных (groupByBrand/Subject/Nm/Barcode/Size, filterPics, filterVolume — опциональные).
 Реализация: создать → polling каждые 5 сек, макс 60 сек → скачать. Taskstatus → "done" обычно за 5 сек.
 
-#### search_analytics ⏳ v0.4.0
+#### get_item_rating ✅ v0.4.0
 ```
-Description: "⚠️ ТРЕБУЕТ подписку «Джем» в личном кабинете WB. Без подписки вернёт 403.
-Поисковые запросы покупателей по товарам: частота, позиции, клики, конверсии."
-WB Endpoint: POST https://seller-analytics-api.wildberries.ru/api/v2/analytics/search-report
-Токен: Analytics (+ подписка «Джем»)
+Description: "Рейтинг продавца + прирост отзывов за период по звёздам (5★/4★/3★/2★/1★) + по товарам."
+WB Endpoint: POST https://seller-analytics-api.wildberries.ru/api/analytics/v1/item-rating
+Токен: Analytics
 ```
-Input: nmIds (array<number>), dateFrom (ISO), dateTo (ISO), page (default 1)
-Важно: в tool description явно указывать что без подписки «Джем» метод вернёт ошибку.
+Input: beginDate (YYYY-MM-DD), endDate (YYYY-MM-DD, не сегодня!), orderField ("feedbackRating"), orderMode ("asc"|"desc"), limit, offset
+Body: { currentPeriod: { start, end }, orderBy: { field, mode }, offset, limit }
+Returns: { sellerRating: { current }, feedbackIncrease: { current, total, dynamics, fiveStar/fourStar/threeStar/twoStar/oneStar: { current, total } }, items: [...] }
+
+#### search_analytics ⏳ deferred
+```
+Description: "⚠️ ТРЕБУЕТ подписку «Джем». Endpoint в release notes есть, но текущий путь /api/v2/analytics/search-report возвращает 404 — нужно дополнительное исследование, отложено."
+```
 
 ---
 
@@ -251,6 +258,33 @@ Rate limit: 1 req/min. Токен: Finance
 ```
 Input: нет.
 Returns: { currency: string, current: number, for_withdraw: number }
+
+#### get_sales_reports_summary ✅ v0.4.0
+```
+Description: "Сводные финансовые отчёты реализации за период (для быстрого дашборда)."
+WB Endpoint: POST https://finance-api.wildberries.ru/api/finance/v1/sales-reports/list
+Rate limit: 1 req/min (global per seller). Токен: Finance
+```
+Input: dateFrom (YYYY-MM-DD), dateTo (YYYY-MM-DD)
+Body: { dateFrom, dateTo }
+Returns: массив { reportId, sellerFinanceName, dateFrom, dateTo, createDate, currency, reportType, retailAmountSum (string), forPaySum (string), deliveryServiceSum (string), paidStorageSum (string), penaltySum (string), deductionSum (string), additionalPaymentSum (string), bankPaymentSum (string), ... }
+Назначение: агрегаты по неделям — гораздо быстрее, чем агрегировать тысячи строк из get_financial_report.
+
+#### get_acquiring_report_list ✅ v0.4.0
+```
+WB Endpoint: POST https://finance-api.wildberries.ru/api/finance/v1/acquiring/list
+Rate limit: 1 req/min. Токен: Finance
+```
+Input: dateFrom, dateTo. 204 = нет данных за период.
+Returns: список отчётов по эквайрингу (с апреля 2026 эквайринг вынесен в отдельный отчёт).
+
+#### get_acquiring_report ✅ v0.4.0
+```
+WB Endpoint: POST https://finance-api.wildberries.ru/api/finance/v1/acquiring/detailed
+Rate limit: 1 req/min. Токен: Finance
+```
+Input: dateFrom, dateTo. 204 = нет данных.
+Returns: построчные комиссии банка-эквайера. Денежные поля — строки (camelCase). Для точного P&L отдельной строкой.
 
 ---
 
@@ -313,54 +347,70 @@ Input: data: array<{ nmID: number, price: number (в рублях), discount: nu
 
 ### content.ts — Контент карточек
 
-#### get_content_cards ⏳ v0.4.0
+#### get_content_cards ✅ v0.4.0
 ```
-Description: "Получить карточки товаров продавца: название, характеристики, артикул, категория.
-Полезно для агентов чтобы знать название товара при работе с отзывами и аналитикой."
 WB Endpoint: POST https://content-api.wildberries.ru/content/v2/get/cards/list
 Токен: Content
 ```
-Input:
-- settings: { cursor: { limit: number (default 100), updatedAt?: string, nmID?: number }, filter: { withPhoto?: number, textSearch?: string, allowedCategoriesOnly?: boolean } }
-Returns: array<{ nmID, vendorCode, subjectName, brand, title, sizes, characteristics }>
-Pagination: cursor-based, использовать cursor из ответа для следующей страницы.
+Input: limit (default 100, max 100), cursorUpdatedAt (опц.), cursorNmID (опц.), withPhoto (-1/0/1, опц.), textSearch (опц.)
+Body: { settings: { cursor: { limit, updatedAt?, nmID? }, filter: { withPhoto?, textSearch? } } }
+Returns: { cards: [{ nmID, imtID, vendorCode, subjectID, subjectName, brand, title, description, sizes, characteristics, ... }], cursor: {...} }
+Pagination: курсорная — передавай cursor.updatedAt и cursor.nmID из предыдущего ответа.
 
 ---
 
-### supplies.ts — Поставки FBO
+### supplies.ts — Поставки FBS
 
-#### get_supplies ⏳ v0.4.0
+#### get_supplies ✅ v0.4.0
 ```
-Description: "Получить список поставок FBO: статус, дата, склад, количество товаров."
 WB Endpoint: GET https://marketplace-api.wildberries.ru/api/v3/supplies
 Токен: Marketplace
 ```
-Input: limit (default 1000, max 1000), next (cursor, default 0), status (optional: "NEW"|"ACCEPTED"|"SORTED")
-Returns: array<{ id, done, createdAt, closedAt, scanDt, name, warehouseId, warehouseName, cargoType }>
+Input: limit (default 1000, max 1000), next (cursor, default 0)
+Returns: { supplies: [{ id ("WB-GI-..."), name, createdAt, closedAt, scanDt, rejectDt, destinationOfficeId, cargoType, done }], next }
 
-#### create_supply ⏳ v0.4.0
+#### create_supply ✅ v0.4.0
 ```
-Description: "⚠️ СОЗДАТЬ новую поставку FBO. Создаёт реальную поставку в личном кабинете WB.
-Используй только после подтверждения пользователем."
+Description: "⚠️ СОЗДАТЬ новую открытую поставку FBS. Реальная поставка в ЛК WB."
 WB Endpoint: POST https://marketplace-api.wildberries.ru/api/v3/supplies
 Токен: Marketplace
 ```
-Input: name (string, название поставки)
-Returns: { id: number } — ID созданной поставки
+Input: name (string, 1-128 символов)
+Returns: { id: "WB-GI-..." }
+
+---
+
+### seller.ts — Информация о продавце (v0.4.0)
+
+#### get_seller_info ✅ v0.4.0
+```
+WB Endpoint: GET https://common-api.wildberries.ru/api/v1/seller-info
+Токен: любой
+```
+Input: нет.
+Returns: { name, sid, tin, tradeMark }
+
+#### get_jam_subscription ✅ v0.4.0
+```
+Description: "⚠️ Требует SERVICE token. Personal token вернёт 403."
+WB Endpoint: GET https://common-api.wildberries.ru/api/common/v1/subscriptions
+Токен: Service
+```
+Input: нет.
+Returns: информация о подписке Jam (даты, уровень) — открывает доступ к поисковой аналитике.
 
 ---
 
 ### documents.ts — Документы
 
-#### get_documents ⏳ v0.4.0
+#### get_documents ✅ v0.4.0
 ```
-Description: "Получить список финансовых документов продавца: акты, отчёты, счета.
-Возвращает ссылки для скачивания."
 WB Endpoint: GET https://documents-api.wildberries.ru/api/v1/documents/list
 Токен: Documents
 ```
-Input: locale (default "ru"), beginTime (ISO date, optional), endTime (ISO date, optional), sort ("date"|"category", default "date")
-Returns: array<{ id, title, date, url, category }>
+Input: locale ("ru"/"en"/"zh", default "ru"), beginTime (опц.), endTime (опц.), sort ("date"|"category", опц.), order ("asc"|"desc", опц., sort и order — оба или ни одного), category (опц.)
+Returns: массив { serviceName, name, category, extensions, creationTime, viewed }
+Скачивание: через отдельный endpoint /api/v1/documents/download?serviceName=...
 
 ---
 

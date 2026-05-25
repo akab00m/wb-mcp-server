@@ -7,6 +7,10 @@ import { registerAnalyticsTools } from "./tools/analytics.js";
 import { registerAdvertisingTools } from "./tools/advertising.js";
 import { registerFinanceTools } from "./tools/finance.js";
 import { registerPricesTools } from "./tools/prices.js";
+import { registerDocumentsTools } from "./tools/documents.js";
+import { registerSellerTools } from "./tools/seller.js";
+import { registerContentTools } from "./tools/content.js";
+import { registerSuppliesTools } from "./tools/supplies.js";
 
 export class WBMCPServer {
   public mcpServer: McpServer;
@@ -31,6 +35,10 @@ export class WBMCPServer {
     registerAdvertisingTools(this.mcpServer, this.wbClient);
     registerFinanceTools(this.mcpServer, this.wbClient);
     registerPricesTools(this.mcpServer, this.wbClient);
+    registerDocumentsTools(this.mcpServer, this.wbClient);
+    registerSellerTools(this.mcpServer, this.wbClient);
+    registerContentTools(this.mcpServer, this.wbClient);
+    registerSuppliesTools(this.mcpServer, this.wbClient);
   }
 
   async start(): Promise<void> {

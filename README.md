@@ -88,9 +88,9 @@ Quit the app **from the system tray** (not just closing the window), then reopen
 npm list -g wb-mcp-server
 ```
 
-Or ask Claude: *"Which wb-mcp-server tools are available to you?"* — v0.3.0 should show 18 tools.
+Or ask Claude: *"Which wb-mcp-server tools are available to you?"* — v0.4.0 should show 28 tools.
 
-## Available Tools (18)
+## Available Tools (28)
 
 ### Reviews & Questions
 
@@ -112,6 +112,7 @@ Or ask Claude: *"Which wb-mcp-server tools are available to you?"* — v0.3.0 sh
 | `get_financial_report` | Detailed report: commissions, logistics, storage, penalties | read |
 | `get_nm_report` | Per-product report (views, cart, orders, buyouts) | read |
 | `get_warehouses_inventory` | Real-time warehouse inventory report (async) | read |
+| `get_item_rating` | Seller rating + feedback increase by star | read |
 
 ### Advertising
 
@@ -134,6 +135,35 @@ Or ask Claude: *"Which wb-mcp-server tools are available to you?"* — v0.3.0 sh
 | Tool | Description | Type |
 |---|---|---|
 | `get_seller_balance` | Current seller account balance | read |
+| `get_sales_reports_summary` | Weekly sales report summaries (for dashboards) | read |
+| `get_acquiring_report_list` | Acquiring expense report summaries | read |
+| `get_acquiring_report` | Detailed acquiring (card-processing) fees | read |
+
+### Product Cards
+
+| Tool | Description | Type |
+|---|---|---|
+| `get_content_cards` | Product cards listing with cursor pagination | read |
+
+### FBS Supplies
+
+| Tool | Description | Type |
+|---|---|---|
+| `get_supplies` | FBS supplies list | read |
+| `create_supply` | Create a new open FBS supply | **write** |
+
+### Documents
+
+| Tool | Description | Type |
+|---|---|---|
+| `get_documents` | Financial documents: invoices, reports, acts | read |
+
+### Seller Info
+
+| Tool | Description | Type |
+|---|---|---|
+| `get_seller_info` | Name, INN, trademark | read |
+| `get_jam_subscription` | Jam subscription status (requires Service token) | read |
 
 ## Configuration
 

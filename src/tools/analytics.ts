@@ -95,6 +95,47 @@ export function registerAnalyticsTools(server: McpServer, client: WBClient): voi
     },
   );
 
+  // get_item_rating
+  server.registerTool(
+    "get_item_rating",
+    {
+      description: `Отчёт по рейтингу: общий рейтинг продавца (sellerRating.current) + прирост отзывов за период с разбивкой по звёздам (fiveStar, fourStar, threeStar, twoStar, oneStar) + детали по каждому товару.
+Используй для мониторинга качества: видишь не только общий рейтинг, но и динамику отзывов 1-2 звезды (сигнал к разбору проблемных товаров).
+⚠️ Дата end не может быть сегодня — используй вчерашнюю дату или раньше.`,
+      inputSchema: {
+        beginDate: z.string().describe("Начало периода, YYYY-MM-DD"),
+        endDate: z.string().describe("Конец периода, YYYY-MM-DD (не должно быть сегодня)"),
+        orderField: z.enum(["feedbackRating"]).default("feedbackRating").describe("Поле сортировки"),
+        orderMode: z.enum(["asc", "desc"]).default("desc").describe("Направление сортировки"),
+        limit: z.number().min(1).max(1000).default(100).describe("Макс товаров в ответе"),
+        offset: z.number().min(0).default(0).describe("Смещение для пагинации"),
+      },
+    },
+    async (args) => {
+      try {
+        const data = await client.post<any>(
+          BASE_URLS.analytics,
+          "/api/analytics/v1/item-rating",
+          {
+            currentPeriod: { start: args.beginDate, end: args.endDate },
+            orderBy: { field: args.orderField, mode: args.orderMode },
+            offset: args.offset,
+            limit: args.limit,
+          },
+        );
+
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(data?.data ?? data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text" as const, text: formatError(error) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
   // get_nm_report
   server.registerTool(
     "get_nm_report",
