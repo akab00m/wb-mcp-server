@@ -81,6 +81,36 @@ export function registerStatisticsTools(server: McpServer, client: WBClient): vo
     },
   );
 
+  // get_incomes
+  server.registerTool(
+    "get_incomes",
+    {
+      description: `Получить поступления товаров на склады WB (приёмки). По каждому баркоду возвращает: номер поставки (incomeId), дату (date), дату изменения (lastChangeDate), склад (warehouseName), артикул продавца (supplierArticle), артикул WB (nmId), баркод, количество (quantity), сумму (totalPrice), дату закрытия поставки (dateClose), статус (status). Для сверки приёмок и заказов. Лимит: 1 запрос в минуту.`,
+      inputSchema: {
+        dateFrom: z.string().describe("Дата начала в формате RFC3339, например 2024-01-01 или 2024-01-01T00:00:00Z"),
+      },
+    },
+    async (args) => {
+      try {
+        await client.rateLimiter.waitIfNeeded("statistics", STATISTICS_RATE_LIMIT);
+
+        const data = await client.get<any[]>(BASE_URLS.statistics, "/api/v1/supplier/incomes", {
+          dateFrom: args.dateFrom,
+        });
+        const items = Array.isArray(data) ? data : [];
+
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(items, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text" as const, text: formatError(error) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
   // get_sales
   server.registerTool(
     "get_sales",

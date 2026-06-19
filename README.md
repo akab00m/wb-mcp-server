@@ -91,9 +91,9 @@ Quit the app **from the system tray** (not just closing the window), then reopen
 npm list -g wb-mcp-server
 ```
 
-Or ask Claude: *"Which wb-mcp-server tools are available to you?"* — v0.4.0 should show 28 tools.
+Or ask Claude: *"Which wb-mcp-server tools are available to you?"* — v0.4.2 should show 29 tools.
 
-## Available Tools (28)
+## Available Tools (29)
 
 ### Reviews & Questions
 
@@ -112,6 +112,7 @@ Or ask Claude: *"Which wb-mcp-server tools are available to you?"* — v0.4.0 sh
 | `get_stocks` | Warehouse stock levels | read |
 | `get_orders` | Recent orders | read |
 | `get_sales` | Sales data | read |
+| `get_incomes` | Incoming shipments to WB warehouses (acceptance) | read |
 | `get_financial_report` | Detailed report: commissions, logistics, storage, penalties | read |
 | `get_nm_report` | Per-product report (views, cart, orders, buyouts) | read |
 | `get_warehouses_inventory` | Real-time warehouse inventory report (async) | read |

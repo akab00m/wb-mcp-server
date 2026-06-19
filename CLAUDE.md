@@ -113,7 +113,7 @@ export const BASE_URLS = {
 
 ---
 
-## MCP Tools — полный реестр (28 инструментов)
+## MCP Tools — полный реестр (29 инструментов)
 
 ### Версионирование:
 - **v0.1.0** — реализовано и опубликовано (10 инструментов)
@@ -121,6 +121,7 @@ export const BASE_URLS = {
 - **v0.3.0** — Phase 2: Ads + Supply агенты (+5 инструментов = 18)
 - **v0.3.1** — миграция get_financial_report и get_stocks на новые endpoint'ы WB
 - **v0.4.0** — Phase 3: контент, поставки, документы, продавец, аналитика рейтинга, эквайринг (+10 инструментов = 28) ✅ **проверено на живом WB API 2026-05-25**
+- **v0.4.2** — get_incomes (+1 = 29)
 
 ---
 
@@ -193,6 +194,15 @@ WB Endpoint: GET https://statistics-api.wildberries.ru/api/v1/supplier/sales
 Rate limit: 1 req/min. Токен: Statistics
 ```
 Input: аналогично get_orders
+
+#### get_incomes ✅ v0.4.2
+```
+Description: "Поступления товаров на склады WB (приёмки). По каждому баркоду: номер поставки (incomeId), дата, склад, артикул, nmId, количество, статус. Для сверки приёмок и заказов."
+WB Endpoint: GET https://statistics-api.wildberries.ru/api/v1/supplier/incomes
+Rate limit: 1 req/min. Токен: Statistics
+```
+Input: dateFrom (RFC3339)
+Returns: массив { incomeId, number, date, lastChangeDate, supplierArticle, techSize, barcode, quantity, totalPrice, dateClose, warehouseName, nmId, status }
 
 #### get_financial_report ✅ v0.3.1
 ```
