@@ -206,7 +206,11 @@ Ask your AI agent (after connecting the MCP server):
 | `MCP_HTTP_HOST` | Bind address (Docker: `0.0.0.0`) | No (`0.0.0.0`) |
 | `MCP_HTTP_PORT` | HTTP port | No (`3000`) |
 | `MCP_HTTP_PATH` | MCP endpoint path | No (`/mcp`) |
-| `MCP_ALLOWED_HOSTS` | Extra allowed Host headers (comma-separated) | No |
+| `MCP_ALLOWED_HOSTS` | Extra allowed Host headers (comma-separated) | No* |
+| `MCP_SESSION_IDLE_TTL_MS` | Idle session TTL (ms), `0` disables | No (`1800000`) |
+| `MCP_SESSION_MAX` | Max concurrent MCP sessions | No (`32`) |
+
+\* Required when `MCP_HTTP_HOST` is not loopback.
 
 CLI: `wb-mcp-server --token=your_token`  
 HTTP: `wb-mcp-server --transport=http --auth-token=secret --read-only`

@@ -32,6 +32,10 @@ export interface ServerConfig {
     path: string;
     authToken: string;
     allowedHosts: string[];
+    /** Close sessions with no requests for this long (ms). 0 disables idle TTL. */
+    sessionIdleTtlMs: number;
+    /** Max concurrent MCP sessions. New initialize → 503 when full (after idle sweep). */
+    sessionMax: number;
   };
 }
 
@@ -58,6 +62,21 @@ function parsePort(value: string | undefined, defaultPort: number): number {
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1 || n > 65535) {
     throw new Error(`Некорректный порт: ${value}`);
+  }
+  return n;
+}
+
+function parsePositiveInt(
+  value: string | undefined,
+  defaultValue: number,
+  label: string,
+  opts?: { min?: number; allowZero?: boolean },
+): number {
+  if (!value) return defaultValue;
+  const n = Number(value);
+  const min = opts?.min ?? (opts?.allowZero ? 0 : 1);
+  if (!Number.isInteger(n) || n < min) {
+    throw new Error(`Некорректное значение ${label}: ${value}`);
   }
   return n;
 }
@@ -129,6 +148,19 @@ export function loadConfig(): ServerConfig {
     throw new Error(`MCP_HTTP_PATH должен начинаться с /: ${path}`);
   }
 
+  const sessionIdleTtlMs = parsePositiveInt(
+    getArg("session-idle-ttl-ms") ?? process.env.MCP_SESSION_IDLE_TTL_MS,
+    30 * 60 * 1000,
+    "MCP_SESSION_IDLE_TTL_MS",
+    { allowZero: true },
+  );
+  const sessionMax = parsePositiveInt(
+    getArg("session-max") ?? process.env.MCP_SESSION_MAX,
+    32,
+    "MCP_SESSION_MAX",
+    { min: 1 },
+  );
+
   return {
     token,
     transport,
@@ -139,6 +171,8 @@ export function loadConfig(): ServerConfig {
       path,
       authToken,
       allowedHosts: [...withPorts],
+      sessionIdleTtlMs,
+      sessionMax,
     },
   };
 }

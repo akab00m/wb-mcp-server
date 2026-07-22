@@ -19,6 +19,8 @@ function reset(): void {
   delete process.env.MCP_HTTP_PORT;
   delete process.env.MCP_HTTP_PATH;
   delete process.env.MCP_ALLOWED_HOSTS;
+  delete process.env.MCP_SESSION_IDLE_TTL_MS;
+  delete process.env.MCP_SESSION_MAX;
 }
 
 afterEach(() => {
@@ -65,6 +67,20 @@ describe("loadConfig", () => {
     expect(cfg.http.allowedHosts).toContain("wb-mcp");
     expect(cfg.http.allowedHosts).toContain("wb-mcp:3100");
     expect(cfg.http.allowedHosts).toContain("localhost");
+    expect(cfg.http.sessionIdleTtlMs).toBe(30 * 60 * 1000);
+    expect(cfg.http.sessionMax).toBe(32);
+  });
+
+  it("parses session TTL and max from env", () => {
+    process.env.WB_API_TOKEN = "wb-test-token";
+    process.env.MCP_TRANSPORT = "http";
+    process.env.MCP_AUTH_TOKEN = "secret-mcp";
+    process.env.MCP_HTTP_HOST = "127.0.0.1";
+    process.env.MCP_SESSION_IDLE_TTL_MS = "60000";
+    process.env.MCP_SESSION_MAX = "4";
+    const cfg = loadConfig();
+    expect(cfg.http.sessionIdleTtlMs).toBe(60_000);
+    expect(cfg.http.sessionMax).toBe(4);
   });
 
   it("supports --read-only and --transport=http flags on loopback", () => {

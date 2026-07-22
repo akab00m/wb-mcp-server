@@ -218,7 +218,11 @@ npm list -g wb-mcp-server
 | `MCP_HTTP_HOST` | Bind-адрес (Docker: `0.0.0.0`) | Нет (`0.0.0.0`) |
 | `MCP_HTTP_PORT` | Порт HTTP | Нет (`3000`) |
 | `MCP_HTTP_PATH` | Путь MCP endpoint | Нет (`/mcp`) |
-| `MCP_ALLOWED_HOSTS` | Доп. Host-заголовки (через запятую) | Нет |
+| `MCP_ALLOWED_HOSTS` | Доп. Host-заголовки (через запятую) | Нет* |
+| `MCP_SESSION_IDLE_TTL_MS` | Idle TTL сессии (мс), `0` = выкл | Нет (`1800000` = 30 мин) |
+| `MCP_SESSION_MAX` | Макс. одновременных MCP-сессий | Нет (`32`) |
+
+\* При `MCP_HTTP_HOST≠loopback` — обязателен.
 
 ### Аргументы командной строки
 

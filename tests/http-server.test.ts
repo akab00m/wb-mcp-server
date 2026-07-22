@@ -12,6 +12,9 @@ async function start(opts?: {
   allowedHosts?: string[];
   host?: string;
   port?: number;
+  sessionIdleTtlMs?: number;
+  sessionMax?: number;
+  now?: () => number;
 }): Promise<void> {
   port = opts?.port ?? 3700 + Math.floor(Math.random() * 200);
   const host = opts?.host ?? "127.0.0.1";
@@ -19,6 +22,7 @@ async function start(opts?: {
     token: "wb-dummy",
     version: "0.0.0-test",
     readOnly: true,
+    now: opts?.now,
     http: {
       host,
       port,
@@ -30,6 +34,8 @@ async function start(opts?: {
         `localhost:${port}`,
         `127.0.0.1:${port}`,
       ],
+      sessionIdleTtlMs: opts?.sessionIdleTtlMs ?? 30 * 60 * 1000,
+      sessionMax: opts?.sessionMax ?? 32,
     },
   });
   server = result.server;
@@ -68,7 +74,6 @@ async function postMcp(
   return { status: res.status, text, sessionId };
 }
 
-/** Low-level POST so we can set Host (fetch often ignores Host override). */
 function postMcpRaw(hostHeader: string, body: unknown): Promise<{ status: number; text: string }> {
   const payload = JSON.stringify(body);
   return new Promise((resolve, reject) => {
@@ -113,9 +118,16 @@ describe("HTTP MCP integration", () => {
     await start();
     const res = await fetch(`${baseUrl}/health`);
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { status: string; readOnly: boolean };
+    const json = (await res.json()) as {
+      status: string;
+      readOnly: boolean;
+      sessionMax: number;
+      sessionIdleTtlMs: number;
+    };
     expect(json.status).toBe("ok");
     expect(json.readOnly).toBe(true);
+    expect(json.sessionMax).toBe(32);
+    expect(json.sessionIdleTtlMs).toBe(30 * 60 * 1000);
   });
 
   it("rejects missing Bearer on /mcp", async () => {
@@ -180,5 +192,49 @@ describe("HTTP MCP integration", () => {
     const res = await postMcpRaw(`wb-mcp:${p}`, initBody);
     expect(res.status).toBe(200);
     expect(res.text).toContain("wb-mcp-server");
+  });
+
+  it("returns 503 when sessionMax is reached", async () => {
+    await start({ sessionMax: 2, sessionIdleTtlMs: 0 });
+    const a = await postMcp(initBody);
+    const b = await postMcp(initBody);
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+    const c = await postMcp(initBody);
+    expect(c.status).toBe(503);
+    expect(c.text).toMatch(/Session limit/i);
+
+    const health = (await (await fetch(`${baseUrl}/health`)).json()) as { sessions: number };
+    expect(health.sessions).toBe(2);
+  });
+
+  it("expires idle sessions and frees capacity", async () => {
+    let clock = 1_000_000;
+    await start({
+      sessionMax: 1,
+      sessionIdleTtlMs: 100,
+      now: () => clock,
+    });
+
+    const first = await postMcp(initBody);
+    expect(first.status).toBe(200);
+    expect(first.sessionId).toBeTruthy();
+
+    const blocked = await postMcp(initBody);
+    expect(blocked.status).toBe(503);
+
+    clock += 200; // past idle TTL
+
+    const second = await postMcp(initBody);
+    expect(second.status).toBe(200);
+    expect(second.sessionId).toBeTruthy();
+    expect(second.sessionId).not.toBe(first.sessionId);
+
+    const stale = await postMcp(
+      { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} },
+      mcpHeaders({ "mcp-session-id": first.sessionId! }),
+    );
+    expect(stale.status).toBe(400);
+    expect(stale.text).toMatch(/expired|Invalid/i);
   });
 });
