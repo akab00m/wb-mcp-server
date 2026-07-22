@@ -1,0 +1,68 @@
+import { describe, it, expect, afterEach } from "vitest";
+import { loadConfig } from "../src/config.js";
+
+const ORIGINAL_ARGV = [...process.argv];
+const ORIGINAL_ENV = { ...process.env };
+
+function reset(): void {
+  process.argv = [...ORIGINAL_ARGV];
+  for (const key of Object.keys(process.env)) {
+    if (!(key in ORIGINAL_ENV)) delete process.env[key];
+  }
+  Object.assign(process.env, ORIGINAL_ENV);
+  delete process.env.WB_API_TOKEN;
+  delete process.env.MCP_TRANSPORT;
+  delete process.env.MCP_AUTH_TOKEN;
+  delete process.env.READ_ONLY;
+  delete process.env.WB_MCP_READ_ONLY;
+  delete process.env.MCP_HTTP_HOST;
+  delete process.env.MCP_HTTP_PORT;
+  delete process.env.MCP_HTTP_PATH;
+  delete process.env.MCP_ALLOWED_HOSTS;
+}
+
+afterEach(() => {
+  reset();
+});
+
+describe("loadConfig", () => {
+  it("defaults to stdio when token is set via env", () => {
+    process.env.WB_API_TOKEN = "wb-test-token";
+    const cfg = loadConfig();
+    expect(cfg.transport).toBe("stdio");
+    expect(cfg.readOnly).toBe(false);
+    expect(cfg.token).toBe("wb-test-token");
+  });
+
+  it("requires auth token for http transport", () => {
+    process.env.WB_API_TOKEN = "wb-test-token";
+    process.env.MCP_TRANSPORT = "http";
+    expect(() => loadConfig()).toThrow(/MCP_AUTH_TOKEN/);
+  });
+
+  it("loads http config with auth and read-only", () => {
+    process.env.WB_API_TOKEN = "wb-test-token";
+    process.env.MCP_TRANSPORT = "http";
+    process.env.MCP_AUTH_TOKEN = "secret-mcp";
+    process.env.READ_ONLY = "true";
+    process.env.MCP_HTTP_PORT = "3100";
+    process.env.MCP_ALLOWED_HOSTS = "wb-mcp,model";
+    const cfg = loadConfig();
+    expect(cfg.transport).toBe("http");
+    expect(cfg.readOnly).toBe(true);
+    expect(cfg.http.port).toBe(3100);
+    expect(cfg.http.authToken).toBe("secret-mcp");
+    expect(cfg.http.allowedHosts).toContain("wb-mcp");
+    expect(cfg.http.allowedHosts).toContain("wb-mcp:3100");
+    expect(cfg.http.allowedHosts).toContain("localhost");
+  });
+
+  it("supports --read-only and --transport=http flags", () => {
+    process.env.WB_API_TOKEN = "wb-test-token";
+    process.argv.push("--transport=http", "--auth-token=cli-secret", "--read-only");
+    const cfg = loadConfig();
+    expect(cfg.transport).toBe("http");
+    expect(cfg.readOnly).toBe(true);
+    expect(cfg.http.authToken).toBe("cli-secret");
+  });
+});

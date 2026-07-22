@@ -3,8 +3,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WBClient } from "../wb-client.js";
 import { BASE_URLS } from "../config.js";
 import { formatError } from "../utils/errors.js";
+import type { ToolRegistrationOptions } from "../types/options.js";
 
-export function registerAdvertisingTools(server: McpServer, client: WBClient): void {
+export function registerAdvertisingTools(
+  server: McpServer,
+  client: WBClient,
+  options: ToolRegistrationOptions = {},
+): void {
   // get_advert_list
   server.registerTool(
     "get_advert_list",
@@ -48,40 +53,43 @@ export function registerAdvertisingTools(server: McpServer, client: WBClient): v
     },
   );
 
-  // update_advert_bid
-  server.registerTool(
-    "update_advert_bid",
-    {
-      description: `⚠️ ВНИМАНИЕ: ИЗМЕНИТЬ ставки в рекламной кампании. Немедленно влияет на показы и расход бюджета.
+  // update_advert_bid (write)
+  if (!options.readOnly) {
+    server.registerTool(
+      "update_advert_bid",
+      {
+        description: `⚠️ ВНИМАНИЕ: ИЗМЕНИТЬ ставки в рекламной кампании. Немедленно влияет на показы и расход бюджета.
 Работает только для кампаний в статусах 4, 9, 11 (активные, на паузе, готовые к запуску).
 Перед вызовом обязательно подтвердить у пользователя список артикулов и новых ставок.`,
-      inputSchema: {
-        advertId: z.number().describe("ID рекламной кампании"),
-        type: z.number().describe("Тип кампании (например, 8 — авто, 9 — аукцион)"),
-        bids: z.array(z.object({
-          nm: z.number().describe("Артикул WB"),
-          price: z.number().describe("Новая ставка в рублях"),
-        })).min(1).describe("Массив ставок по артикулам"),
+        inputSchema: {
+          advertId: z.number().describe("ID рекламной кампании"),
+          type: z.number().describe("Тип кампании (например, 8 — авто, 9 — аукцион)"),
+          bids: z.array(z.object({
+            nm: z.number().describe("Артикул WB"),
+            price: z.number().describe("Новая ставка в рублях"),
+          })).min(1).describe("Массив ставок по артикулам"),
+        },
+        annotations: { destructiveHint: true },
       },
-    },
-    async (args) => {
-      try {
-        const data = await client.patch<any>(BASE_URLS.advertising, "/api/advert/v1/bids", {
-          advertId: args.advertId,
-          type: args.type,
-          bids: args.bids,
-        });
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
-        };
-      } catch (error) {
-        return {
-          content: [{ type: "text" as const, text: formatError(error) }],
-          isError: true,
-        };
-      }
-    },
-  );
+      async (args) => {
+        try {
+          const data = await client.patch<any>(BASE_URLS.advertising, "/api/advert/v1/bids", {
+            advertId: args.advertId,
+            type: args.type,
+            bids: args.bids,
+          });
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+          };
+        } catch (error) {
+          return {
+            content: [{ type: "text" as const, text: formatError(error) }],
+            isError: true,
+          };
+        }
+      },
+    );
+  }
 
   // get_advert_stats
   server.registerTool(

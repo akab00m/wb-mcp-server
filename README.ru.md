@@ -212,12 +212,33 @@ npm list -g wb-mcp-server
 | Переменная | Описание | Обязательна |
 |---|---|---|
 | `WB_API_TOKEN` | Токен WB Seller API | Да |
+| `MCP_TRANSPORT` | `stdio` (по умолчанию) или `http` | Нет |
+| `MCP_AUTH_TOKEN` | Bearer-секрет для HTTP (`Authorization: Bearer …`) | Да, если `http` |
+| `READ_ONLY` | `true` — не регистрировать write-tools | Нет |
+| `MCP_HTTP_HOST` | Bind-адрес (Docker: `0.0.0.0`) | Нет (`0.0.0.0`) |
+| `MCP_HTTP_PORT` | Порт HTTP | Нет (`3000`) |
+| `MCP_HTTP_PATH` | Путь MCP endpoint | Нет (`/mcp`) |
+| `MCP_ALLOWED_HOSTS` | Доп. Host-заголовки (через запятую) | Нет |
 
 ### Аргументы командной строки
 
 ```bash
 wb-mcp-server --token=ваш_токен
+wb-mcp-server --transport=http --auth-token=секрет --read-only --port=3000
 ```
+
+### HTTP + Docker (контейнер ↔ модель)
+
+```bash
+# Пример: examples/docker-compose.yml
+MCP_TRANSPORT=http
+MCP_AUTH_TOKEN=длинный-секрет
+READ_ONLY=true
+MCP_ALLOWED_HOSTS=wb-mcp
+```
+
+Клиент модели: `POST http://wb-mcp:3000/mcp` с заголовком `Authorization: Bearer <MCP_AUTH_TOKEN>`.  
+Healthcheck: `GET /health` (без auth). Порт MCP наружу не публикуйте — только внутренняя Docker-сеть.
 
 ## Разработка
 

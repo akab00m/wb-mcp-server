@@ -7,7 +7,8 @@ This repo is a single TypeScript product: `wb-mcp-server`, an MCP (Model Context
 ### Running / dev
 - Start in dev mode: `npm run dev` (runs `tsx src/index.ts`). Production run is `npm run build` then `npm start`. See `package.json` scripts.
 - A WB API token is REQUIRED to start: set `WB_API_TOKEN` (see `.env.example`) or pass `--token=<token>`. Without it the process prints a bilingual error and exits 1.
-- The server communicates over stdio (JSON-RPC), so you cannot "just open a page". To exercise it, spawn it from an MCP client (e.g. `@modelcontextprotocol/sdk` `Client` + `StdioClientTransport`) and call `listTools` / `callTool`. Listing tools should return 35 tools.
+- Default transport is **stdio** (JSON-RPC). For Docker ↔ model: `MCP_TRANSPORT=http`, `MCP_AUTH_TOKEN=<secret>`, optionally `READ_ONLY=true`. Endpoint `POST /mcp`, health `GET /health`.
+- Listing tools should return 35 tools (or 30 with `READ_ONLY=true`).
 - Any `callTool` makes a LIVE HTTPS request to `*.wildberries.ru`. With a dummy/invalid token, read tools return a graceful Russian error (`Ошибка WB API (HTTP 401)...`, `isError: true`) — this is expected, not a bug.
 - A valid `WB_API_TOKEN` secret is provided in this environment, so read tools (`get_seller_info`, `get_prices`, `get_stocks`, `get_content_cards`, `get_seller_balance`, etc.) return real store data end-to-end. This connects to a REAL production seller account: never call write tools (`reply_feedback`, `reply_question`, `update_prices`, `update_advert_bid`, `create_supply`) unless explicitly intended — they mutate the live store. Also mind the 1 req/min rate limits on the statistics/finance/analytics buckets.
 

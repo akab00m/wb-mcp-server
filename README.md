@@ -200,8 +200,18 @@ Ask your AI agent (after connecting the MCP server):
 | Variable | Description | Required |
 |---|---|---|
 | `WB_API_TOKEN` | Wildberries Seller API token | Yes |
+| `MCP_TRANSPORT` | `stdio` (default) or `http` | No |
+| `MCP_AUTH_TOKEN` | Bearer secret for HTTP mode | Yes if `http` |
+| `READ_ONLY` | `true` — skip write tools | No |
+| `MCP_HTTP_HOST` | Bind address (Docker: `0.0.0.0`) | No (`0.0.0.0`) |
+| `MCP_HTTP_PORT` | HTTP port | No (`3000`) |
+| `MCP_HTTP_PATH` | MCP endpoint path | No (`/mcp`) |
+| `MCP_ALLOWED_HOSTS` | Extra allowed Host headers (comma-separated) | No |
 
-Or pass via CLI: `wb-mcp-server --token=your_token`
+CLI: `wb-mcp-server --token=your_token`  
+HTTP: `wb-mcp-server --transport=http --auth-token=secret --read-only`
+
+See `examples/docker-compose.yml` and `Dockerfile` for container-to-container setup. Health: `GET /health`. Do not publish the MCP port to the host — keep it on a private Docker network.
 
 ## Development
 

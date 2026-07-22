@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 (2026-07-22)
+
+### Features
+
+- **HTTP transport (Streamable HTTP)** — `MCP_TRANSPORT=http` для Docker / контейнер↔контейнер. Endpoint по умолчанию `POST /mcp`, healthcheck `GET /health`.
+- **Bearer auth** — в HTTP-режиме обязателен `MCP_AUTH_TOKEN` (`Authorization: Bearer …`). Без токена процесс не стартует.
+- **READ_ONLY** — `READ_ONLY=true` / `--read-only` не регистрирует write-tools: `reply_feedback`, `reply_question`, `update_prices`, `update_advert_bid`, `create_supply` (35 → 30 tools).
+- **Allowlist хостов WB** — `WBClient` отклоняет запросы не на `*.wildberries.ru` из `BASE_URLS` и абсолютные URL в path.
+- **Docker** — `Dockerfile` + `examples/docker-compose.yml` (private network, без publish порта MCP).
+
+### Notes
+
+- Stdio остаётся транспортом по умолчанию (обратная совместимость с Claude Desktop).
+- Рекомендуется read-only WB API token + `READ_ONLY=true` для HTTP-деплоя.
+
 ## 0.4.3 (2026-06-22)
 
 ### Removed (1)
