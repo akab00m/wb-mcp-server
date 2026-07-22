@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { createConfiguredMcpServer } from "../src/server.js";
+import { createConfiguredMcpServer } from "../src/create-mcp.js";
 import { WBClient } from "../src/wb-client.js";
 import { BASE_URLS } from "../src/config.js";
 import { WBApiError } from "../src/utils/errors.js";

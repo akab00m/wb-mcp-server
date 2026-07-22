@@ -237,8 +237,11 @@ READ_ONLY=true
 MCP_ALLOWED_HOSTS=wb-mcp
 ```
 
-Клиент модели: `POST http://wb-mcp:3000/mcp` с заголовком `Authorization: Bearer <MCP_AUTH_TOKEN>`.  
+Клиент модели: `POST http://wb-mcp:3000/mcp` с заголовками:
+`Authorization: Bearer <MCP_AUTH_TOKEN>` и `Accept: application/json, text/event-stream`.
+После `initialize` клиент обязан передавать `mcp-session-id` из ответа.
 Healthcheck: `GET /health` (без auth). Порт MCP наружу не публикуйте — только внутренняя Docker-сеть.
+При `MCP_HTTP_HOST=0.0.0.0` **обязателен** `MCP_ALLOWED_HOSTS` (имя сервиса, иначе Host от Docker → 403).
 
 ## Разработка
 

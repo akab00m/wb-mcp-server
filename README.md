@@ -211,7 +211,9 @@ Ask your AI agent (after connecting the MCP server):
 CLI: `wb-mcp-server --token=your_token`  
 HTTP: `wb-mcp-server --transport=http --auth-token=secret --read-only`
 
-See `examples/docker-compose.yml` and `Dockerfile` for container-to-container setup. Health: `GET /health`. Do not publish the MCP port to the host — keep it on a private Docker network.
+See `examples/docker-compose.yml` and `Dockerfile` for container-to-container setup.
+Client: `Authorization: Bearer <MCP_AUTH_TOKEN>`, `Accept: application/json, text/event-stream`, then pass `mcp-session-id` after initialize.
+Health: `GET /health`. Do not publish the MCP port. Non-loopback bind requires `MCP_ALLOWED_HOSTS` (Docker service name) or Host checks return 403.
 
 ## Development
 

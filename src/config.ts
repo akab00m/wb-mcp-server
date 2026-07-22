@@ -100,15 +100,12 @@ export function loadConfig(): ServerConfig {
 
   const allowedHostsRaw =
     getArg("allowed-hosts") ?? process.env.MCP_ALLOWED_HOSTS ?? "";
-  const allowedHosts = [
-    "localhost",
-    "127.0.0.1",
-    ...allowedHostsRaw
-      .split(",")
-      .map((h) => h.trim())
-      .filter(Boolean),
-  ];
-  // Include host:port forms commonly sent by Docker clients
+  const extraHosts = allowedHostsRaw
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
+  const allowedHosts = ["localhost", "127.0.0.1", "::1", ...extraHosts];
+  // Include host:port forms commonly sent by Docker / reverse-proxy clients
   const withPorts = new Set<string>(allowedHosts);
   for (const h of [...withPorts]) {
     withPorts.add(`${h}:${port}`);
@@ -117,6 +114,14 @@ export function loadConfig(): ServerConfig {
   if (transport === "http" && !authToken) {
     throw new Error(
       "HTTP-режим требует MCP_AUTH_TOKEN (или --auth-token=...). Без auth MCP станет открытым прокси к WB.",
+    );
+  }
+
+  const isLoopback =
+    host === "127.0.0.1" || host === "localhost" || host === "::1";
+  if (transport === "http" && !isLoopback && extraHosts.length === 0) {
+    throw new Error(
+      "При MCP_HTTP_HOST≠loopback задайте MCP_ALLOWED_HOSTS (имя Docker-сервиса, напр. wb-mcp). Иначе Host-заголовок от контейнеров получит 403.",
     );
   }
 
