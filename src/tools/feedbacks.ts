@@ -3,8 +3,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WBClient } from "../wb-client.js";
 import { BASE_URLS } from "../config.js";
 import { formatError } from "../utils/errors.js";
+import type { ToolRegistrationOptions } from "../types/options.js";
 
-export function registerFeedbackTools(server: McpServer, client: WBClient): void {
+export function registerFeedbackTools(
+  server: McpServer,
+  client: WBClient,
+  options: ToolRegistrationOptions = {},
+): void {
   // get_feedbacks
   server.registerTool(
     "get_feedbacks",
@@ -58,35 +63,37 @@ export function registerFeedbackTools(server: McpServer, client: WBClient): void
     },
   );
 
-  // reply_feedback
-  server.registerTool(
-    "reply_feedback",
-    {
-      description: "⚠️ ОТВЕТИТЬ на отзыв покупателя. ВНИМАНИЕ: это действие отправляет реальный ответ, который увидит покупатель! Убедитесь, что текст корректен перед отправкой. Ответ можно отредактировать только 1 раз в течение 60 дней.",
-      inputSchema: {
-        id: z.string().describe("ID отзыва (получите через get_feedbacks)"),
-        text: z.string().min(2).max(5000).describe("Текст ответа на отзыв (2-5000 символов)"),
+  // reply_feedback (write)
+  if (!options.readOnly) {
+    server.registerTool(
+      "reply_feedback",
+      {
+        description: "⚠️ ОТВЕТИТЬ на отзыв покупателя. ВНИМАНИЕ: это действие отправляет реальный ответ, который увидит покупатель! Убедитесь, что текст корректен перед отправкой. Ответ можно отредактировать только 1 раз в течение 60 дней.",
+        inputSchema: {
+          id: z.string().describe("ID отзыва (получите через get_feedbacks)"),
+          text: z.string().min(2).max(5000).describe("Текст ответа на отзыв (2-5000 символов)"),
+        },
+        annotations: { destructiveHint: true },
       },
-      annotations: { destructiveHint: true },
-    },
-    async (args) => {
-      try {
-        await client.post<any>(BASE_URLS.feedbacks, "/api/v1/feedbacks/answer", {
-          id: args.id,
-          text: args.text,
-        });
+      async (args) => {
+        try {
+          await client.post<any>(BASE_URLS.feedbacks, "/api/v1/feedbacks/answer", {
+            id: args.id,
+            text: args.text,
+          });
 
-        return {
-          content: [{ type: "text" as const, text: "Ответ на отзыв успешно отправлен." }],
-        };
-      } catch (error) {
-        return {
-          content: [{ type: "text" as const, text: formatError(error) }],
-          isError: true,
-        };
-      }
-    },
-  );
+          return {
+            content: [{ type: "text" as const, text: "Ответ на отзыв успешно отправлен." }],
+          };
+        } catch (error) {
+          return {
+            content: [{ type: "text" as const, text: formatError(error) }],
+            isError: true,
+          };
+        }
+      },
+    );
+  }
 
   // get_questions
   server.registerTool(
@@ -140,36 +147,38 @@ export function registerFeedbackTools(server: McpServer, client: WBClient): void
     },
   );
 
-  // reply_question
-  server.registerTool(
-    "reply_question",
-    {
-      description: "⚠️ ОТВЕТИТЬ на вопрос покупателя. ВНИМАНИЕ: это действие отправляет реальный ответ, который увидит покупатель! Убедитесь, что текст корректен перед отправкой.",
-      inputSchema: {
-        id: z.string().describe("ID вопроса (получите через get_questions)"),
-        text: z.string().min(1).describe("Текст ответа на вопрос"),
+  // reply_question (write)
+  if (!options.readOnly) {
+    server.registerTool(
+      "reply_question",
+      {
+        description: "⚠️ ОТВЕТИТЬ на вопрос покупателя. ВНИМАНИЕ: это действие отправляет реальный ответ, который увидит покупатель! Убедитесь, что текст корректен перед отправкой.",
+        inputSchema: {
+          id: z.string().describe("ID вопроса (получите через get_questions)"),
+          text: z.string().min(1).describe("Текст ответа на вопрос"),
+        },
+        annotations: { destructiveHint: true },
       },
-      annotations: { destructiveHint: true },
-    },
-    async (args) => {
-      try {
-        await client.patch<any>(BASE_URLS.feedbacks, "/api/v1/questions", {
-          id: args.id,
-          text: args.text,
-          state: "wbGoodsDetails",
-        });
+      async (args) => {
+        try {
+          await client.patch<any>(BASE_URLS.feedbacks, "/api/v1/questions", {
+            id: args.id,
+            text: args.text,
+            state: "wbGoodsDetails",
+          });
 
-        return {
-          content: [{ type: "text" as const, text: "Ответ на вопрос успешно отправлен." }],
-        };
-      } catch (error) {
-        return {
-          content: [{ type: "text" as const, text: formatError(error) }],
-          isError: true,
-        };
-      }
-    },
-  );
+          return {
+            content: [{ type: "text" as const, text: "Ответ на вопрос успешно отправлен." }],
+          };
+        } catch (error) {
+          return {
+            content: [{ type: "text" as const, text: formatError(error) }],
+            isError: true,
+          };
+        }
+      },
+    );
+  }
 
   // get_unanswered_count
   server.registerTool(

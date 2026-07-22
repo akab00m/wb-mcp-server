@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.0 (2026-07-22)
+
+### Features
+
+- **HTTP transport (Streamable HTTP, stateful)** — `MCP_TRANSPORT=http` для Docker / контейнер↔контейнер. Endpoint `POST|GET|DELETE /mcp`, healthcheck `GET /health`. Сессии через `mcp-session-id`.
+- **Bearer auth** — в HTTP-режиме обязателен `MCP_AUTH_TOKEN` (`Authorization: Bearer …`). Без токена процесс не стартует.
+- **READ_ONLY** — `READ_ONLY=true` / `--read-only` не регистрирует write-tools: `reply_feedback`, `reply_question`, `update_prices`, `update_advert_bid`, `create_supply` (35 → 30 tools).
+- **Allowlist хостов WB** — `WBClient` отклоняет запросы не на `*.wildberries.ru` из `BASE_URLS` и абсолютные URL в path.
+- **Docker Host guard** — при bind ≠ loopback обязателен `MCP_ALLOWED_HOSTS` (иначе DNS-rebinding middleware даёт 403 на имя сервиса).
+- **Session limits** — `MCP_SESSION_IDLE_TTL_MS` (default 30 мин) + `MCP_SESSION_MAX` (default 32). Idle сессии закрываются; при лимите новый `initialize` → 503.
+- **Docker** — `Dockerfile` (ENV по умолчанию: http + read-only) + `examples/docker-compose.yml`.
+
+### Notes
+
+- Stdio остаётся транспортом по умолчанию вне Docker-образа (обратная совместимость с Claude Desktop).
+- Docker-образ задаёт `MCP_TRANSPORT=http` + `READ_ONLY=true` + `MCP_HTTP_HOST=0.0.0.0` — на runtime обязательны `WB_API_TOKEN`, `MCP_AUTH_TOKEN`, `MCP_ALLOWED_HOSTS`.
+- Default `MCP_HTTP_HOST=0.0.0.0` в коде: локальный HTTP без allowlist — передайте `--host=127.0.0.1`.
+- Рекомендуется read-only WB API token + `READ_ONLY=true` для HTTP-деплоя.
+
 ## 0.4.3 (2026-06-22)
 
 ### Removed (1)

@@ -1,49 +1,65 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WBClient } from "./wb-client.js";
-import { registerFeedbackTools } from "./tools/feedbacks.js";
-import { registerStatisticsTools } from "./tools/statistics.js";
-import { registerAnalyticsTools } from "./tools/analytics.js";
-import { registerAdvertisingTools } from "./tools/advertising.js";
-import { registerFinanceTools } from "./tools/finance.js";
-import { registerPricesTools } from "./tools/prices.js";
-import { registerDocumentsTools } from "./tools/documents.js";
-import { registerSellerTools } from "./tools/seller.js";
-import { registerContentTools } from "./tools/content.js";
-import { registerSuppliesTools } from "./tools/supplies.js";
+import { createConfiguredMcpServer } from "./create-mcp.js";
+import { listenHttpMcp } from "./http-server.js";
+import type { ServerConfig } from "./config.js";
+import type { ToolRegistrationOptions } from "./types/options.js";
+
+export { createConfiguredMcpServer } from "./create-mcp.js";
 
 export class WBMCPServer {
-  public mcpServer: McpServer;
-  public wbClient: WBClient;
+  public mcpServer: McpServer | null;
+  public wbClient: WBClient | null;
   private version: string;
+  private token: string;
+  private readOnly: boolean;
 
-  constructor(token: string, version: string) {
+  constructor(token: string, version: string, options: ToolRegistrationOptions = {}) {
+    this.token = token;
     this.version = version;
-    this.wbClient = new WBClient(token);
-    this.mcpServer = new McpServer({
-      name: "wb-mcp-server",
-      version,
+    this.readOnly = options.readOnly === true;
+    // Lazy for HTTP: tools are created per session. Eager for stdio.
+    this.mcpServer = null;
+    this.wbClient = null;
+  }
+
+  private ensureStdioServer(): void {
+    if (this.mcpServer) return;
+    const created = createConfiguredMcpServer(this.token, this.version, {
+      readOnly: this.readOnly,
     });
-
-    this.registerTools();
+    this.mcpServer = created.mcpServer;
+    this.wbClient = created.wbClient;
   }
 
-  private registerTools(): void {
-    registerFeedbackTools(this.mcpServer, this.wbClient);
-    registerStatisticsTools(this.mcpServer, this.wbClient);
-    registerAnalyticsTools(this.mcpServer, this.wbClient);
-    registerAdvertisingTools(this.mcpServer, this.wbClient);
-    registerFinanceTools(this.mcpServer, this.wbClient);
-    registerPricesTools(this.mcpServer, this.wbClient);
-    registerDocumentsTools(this.mcpServer, this.wbClient);
-    registerSellerTools(this.mcpServer, this.wbClient);
-    registerContentTools(this.mcpServer, this.wbClient);
-    registerSuppliesTools(this.mcpServer, this.wbClient);
-  }
-
-  async start(): Promise<void> {
+  /** Stdio transport (default, Claude Desktop / local MCP clients). */
+  async startStdio(): Promise<void> {
+    this.ensureStdioServer();
     const transport = new StdioServerTransport();
-    await this.mcpServer.connect(transport);
-    process.stderr.write(`wb-mcp-server v${this.version} started\n`);
+    await this.mcpServer!.connect(transport);
+    const mode = this.readOnly ? "read-only" : "full";
+    process.stderr.write(`wb-mcp-server v${this.version} started (stdio, ${mode})\n`);
+  }
+
+  /**
+   * Streamable HTTP for container-to-container use.
+   * Sessions create their own McpServer instances.
+   */
+  async startHttp(config: ServerConfig["http"]): Promise<void> {
+    await listenHttpMcp({
+      token: this.token,
+      version: this.version,
+      readOnly: this.readOnly,
+      http: config,
+    });
+  }
+
+  async start(config: ServerConfig): Promise<void> {
+    if (config.transport === "http") {
+      await this.startHttp(config.http);
+      return;
+    }
+    await this.startStdio();
   }
 }

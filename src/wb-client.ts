@@ -1,5 +1,6 @@
 import { WBApiError } from "./utils/errors.js";
 import { RateLimiter } from "./utils/rate-limiter.js";
+import { ALLOWED_WB_HOSTS } from "./config.js";
 
 export class WBClient {
   private token: string;
@@ -15,6 +16,34 @@ export class WBClient {
       Authorization: this.token,
       "Content-Type": "application/json",
     };
+  }
+
+  /**
+   * Build and validate URL. Only *.wildberries.ru hosts from BASE_URLS are allowed.
+   */
+  private buildUrl(baseUrl: string, path: string, params?: Record<string, unknown>): URL {
+    if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("//")) {
+      throw new WBApiError(400, "FORBIDDEN_URL", "Абсолютный URL в path запрещён");
+    }
+
+    const url = new URL(path, baseUrl);
+    if (!ALLOWED_WB_HOSTS.includes(url.hostname)) {
+      throw new WBApiError(
+        400,
+        "FORBIDDEN_HOST",
+        `Хост не разрешён для WB API: ${url.hostname}`,
+      );
+    }
+
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+          url.searchParams.set(key, String(value));
+        }
+      }
+    }
+
+    return url;
   }
 
   private async handleResponse<T>(response: Response, url: string): Promise<T> {
@@ -49,14 +78,7 @@ export class WBClient {
   }
 
   async get<T>(baseUrl: string, path: string, params?: Record<string, any>): Promise<T> {
-    const url = new URL(path, baseUrl);
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        if (value !== undefined && value !== null) {
-          url.searchParams.set(key, String(value));
-        }
-      }
-    }
+    const url = this.buildUrl(baseUrl, path, params);
 
     const response = await fetch(url.toString(), {
       method: "GET",
@@ -67,7 +89,7 @@ export class WBClient {
   }
 
   async post<T>(baseUrl: string, path: string, body?: any): Promise<T> {
-    const url = new URL(path, baseUrl);
+    const url = this.buildUrl(baseUrl, path);
 
     const response = await fetch(url.toString(), {
       method: "POST",
@@ -79,7 +101,7 @@ export class WBClient {
   }
 
   async patch<T>(baseUrl: string, path: string, body?: any): Promise<T> {
-    const url = new URL(path, baseUrl);
+    const url = this.buildUrl(baseUrl, path);
 
     const response = await fetch(url.toString(), {
       method: "PATCH",

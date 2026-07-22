@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.git
+coverage
+*.md
+!README.md
+internal
+.claude

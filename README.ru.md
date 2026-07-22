@@ -212,12 +212,53 @@ npm list -g wb-mcp-server
 | Переменная | Описание | Обязательна |
 |---|---|---|
 | `WB_API_TOKEN` | Токен WB Seller API | Да |
+| `MCP_TRANSPORT` | `stdio` (по умолчанию вне Docker-образа) или `http` | Нет |
+| `MCP_AUTH_TOKEN` | Bearer-секрет для HTTP (`Authorization: Bearer …`) | Да, если `http` |
+| `READ_ONLY` / `WB_MCP_READ_ONLY` | `true` — не регистрировать write-tools | Нет |
+| `MCP_HTTP_HOST` | Bind-адрес. Default `0.0.0.0`. Для локального HTTP без allowlist: `127.0.0.1` | Нет |
+| `MCP_HTTP_PORT` | Порт HTTP | Нет (`3000`) |
+| `MCP_HTTP_PATH` | Путь MCP endpoint | Нет (`/mcp`) |
+| `MCP_ALLOWED_HOSTS` | Доп. Host-заголовки (через запятую). `localhost`/`127.0.0.1` всегда есть | Да*, если host ≠ loopback |
+| `MCP_SESSION_IDLE_TTL_MS` | Idle TTL сессии (мс), `0` = выкл | Нет (`1800000` = 30 мин) |
+| `MCP_SESSION_MAX` | Макс. одновременных MCP-сессий; сверх лимита `initialize` → 503 | Нет (`32`) |
+
+\* При `MCP_HTTP_HOST=0.0.0.0` (и любом non-loopback) без `MCP_ALLOWED_HOSTS` процесс **не стартует**.
 
 ### Аргументы командной строки
 
 ```bash
+# stdio (Claude Desktop)
 wb-mcp-server --token=ваш_токен
+
+# HTTP локально (loopback — ALLOWED_HOSTS не нужен)
+wb-mcp-server --transport=http --auth-token=секрет --read-only --host=127.0.0.1 --port=3000
+
+# HTTP как в Docker (non-loopback — ALLOWED_HOSTS обязателен)
+wb-mcp-server --transport=http --auth-token=секрет --read-only --host=0.0.0.0 \
+  --allowed-hosts=wb-mcp --session-max=32 --session-idle-ttl-ms=1800000
 ```
+
+### HTTP + Docker (контейнер ↔ модель)
+
+```bash
+# Полный пример: examples/docker-compose.yml + Dockerfile
+WB_API_TOKEN=...
+MCP_TRANSPORT=http
+MCP_AUTH_TOKEN=длинный-секрет
+READ_ONLY=true
+MCP_HTTP_HOST=0.0.0.0
+MCP_HTTP_PORT=3000
+MCP_ALLOWED_HOSTS=wb-mcp
+MCP_SESSION_MAX=32
+MCP_SESSION_IDLE_TTL_MS=1800000
+```
+
+Клиент модели: `POST|GET|DELETE http://wb-mcp:3000/mcp` с заголовками
+`Authorization: Bearer <MCP_AUTH_TOKEN>` и `Accept: application/json, text/event-stream`.
+После `initialize` передавайте `mcp-session-id` из ответа (иначе 400).
+При простое дольше TTL сессия закрывается; при `sessionMax` новый `initialize` → 503.
+Healthcheck: `GET /health` (без auth) — отдаёт `sessions`, `sessionMax`, `sessionIdleTtlMs`.
+Порт MCP наружу не публикуйте — только внутренняя Docker-сеть.
 
 ## Разработка
 

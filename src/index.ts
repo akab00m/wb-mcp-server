@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { getToken } from "./config.js";
+import { loadConfig } from "./config.js";
 import { WBMCPServer } from "./server.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,21 +19,31 @@ function getVersion(): string {
 }
 
 async function main(): Promise<void> {
-  const token = getToken();
-
-  if (!token) {
+  let config;
+  try {
+    config = loadConfig();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(
-      `Ошибка: не указан WB API токен.\n` +
-      `Установите переменную окружения WB_API_TOKEN или передайте аргумент --token=<ваш_токен>.\n\n` +
-      `Error: WB API token is not set.\n` +
-      `Set the WB_API_TOKEN environment variable or pass --token=<your_token>.\n`,
+      `Ошибка: ${message}\n\n` +
+        `Установите WB_API_TOKEN или --token=<токен>.\n` +
+        `Для HTTP: MCP_TRANSPORT=http, MCP_AUTH_TOKEN=<секрет>.\n` +
+        `При MCP_HTTP_HOST=0.0.0.0 обязателен MCP_ALLOWED_HOSTS=<имя-сервиса>.\n` +
+        `Опционально: READ_ONLY=true, MCP_HTTP_PORT=3000\n\n` +
+        `Error: ${message}\n` +
+        `Set WB_API_TOKEN or --token=<token>.\n` +
+        `For HTTP: MCP_TRANSPORT=http, MCP_AUTH_TOKEN=<secret>.\n` +
+        `When MCP_HTTP_HOST=0.0.0.0, MCP_ALLOWED_HOSTS=<service-name> is required.\n` +
+        `Optional: READ_ONLY=true, MCP_HTTP_PORT=3000\n`,
     );
     process.exit(1);
   }
 
   const version = getVersion();
-  const server = new WBMCPServer(token, version);
-  await server.start();
+  const server = new WBMCPServer(config.token, version, {
+    readOnly: config.readOnly,
+  });
+  await server.start(config);
 }
 
 main().catch((error) => {

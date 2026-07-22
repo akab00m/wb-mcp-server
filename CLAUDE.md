@@ -15,12 +15,17 @@ Open-source MCP (Model Context Protocol) server для доступа AI-аге�
 ## Architecture
 
 ```
-MCP Client (Claude Desktop / любой MCP-совместимый агент)
-        ↓ MCP Protocol (stdio или SSE)
+MCP Client (Claude Desktop / модель в Docker)
+        ↓ MCP Protocol (stdio по умолчанию | Streamable HTTP)
     wb-mcp-server
         ↓ REST/JSON over HTTPS
     Wildberries Seller API (dev.wildberries.ru)
 ```
+
+**Транспорт:**
+- `stdio` — default (`npm start` / Claude Desktop)
+- `http` — Docker/container: `MCP_TRANSPORT=http`, обязателен `MCP_AUTH_TOKEN`, stateful сессии (`mcp-session-id`), лимиты `MCP_SESSION_MAX` / `MCP_SESSION_IDLE_TTL_MS`
+- `READ_ONLY=true` — не регистрирует write-tools (35 → 30)
 
 ## Tech Stack
 
@@ -49,32 +54,39 @@ MCP Client (Claude Desktop / любой MCP-совместимый агент)
 wb-mcp-server/
 ├── src/
 │   ├── index.ts              # Entry point, shebang, запуск сервера
-│   ├── server.ts             # WBMCPServer class, регистрация tools
-│   ├── config.ts             # BASE_URLS, env vars
-│   ├── wb-client.ts          # HTTP-клиент: auth, rate-limit, error handling
+│   ├── server.ts             # WBMCPServer: stdio / делегирование в HTTP
+│   ├── create-mcp.ts         # Фабрика McpServer + регистрация tools
+│   ├── http-server.ts        # Streamable HTTP, сессии, TTL/max
+│   ├── http-auth.ts          # Bearer middleware
+│   ├── config.ts             # BASE_URLS, loadConfig(), env/CLI
+│   ├── wb-client.ts          # HTTP-клиент: auth, rate-limit, host allowlist
 │   ├── tools/
-│   │   ├── feedbacks.ts      # get_feedbacks, reply_feedback, get_unanswered_count, get_questions, reply_question
-│   │   ├── statistics.ts     # get_stocks, get_orders, get_sales, get_financial_report
-│   │   ├── analytics.ts      # get_nm_report, get_warehouses_inventory, search_analytics
-│   │   ├── finance.ts        # get_seller_balance
-│   │   ├── advertising.ts    # get_advert_list, get_advert_stats, get_advert_balance, update_advert_bid
-│   │   ├── prices.ts         # get_prices, update_prices
-│   │   ├── content.ts        # get_content_cards
-│   │   ├── supplies.ts       # get_supplies, create_supply
-│   │   └── documents.ts      # get_documents
+│   │   ├── feedbacks.ts
+│   │   ├── statistics.ts
+│   │   ├── analytics.ts
+│   │   ├── finance.ts
+│   │   ├── advertising.ts
+│   │   ├── prices.ts
+│   │   ├── content.ts
+│   │   ├── supplies.ts
+│   │   ├── seller.ts
+│   │   └── documents.ts
 │   ├── types/
-│   │   ├── wb-api.ts         # WB API response/request types
-│   │   └── tools.ts          # Tool input/output schemas
+│   │   └── options.ts        # ToolRegistrationOptions (readOnly)
 │   └── utils/
-│       ├── rate-limiter.ts   # Per-endpoint rate limiting
-│       ├── pagination.ts     # Cursor-based pagination helper
-│       └── errors.ts         # WBApiError, formatError()
+│       ├── rate-limiter.ts
+│       └── errors.ts
 ├── tests/
 │   ├── tools/
-│   └── integration/
+│   ├── config.test.ts
+│   ├── http-auth.test.ts
+│   ├── http-server.test.ts
+│   └── security.test.ts
 ├── examples/
 │   ├── claude-desktop.json
+│   ├── docker-compose.yml
 │   └── usage.md
+├── Dockerfile
 ├── package.json
 ├── tsconfig.json
 ├── tsup.config.ts
@@ -123,6 +135,7 @@ export const BASE_URLS = {
 - **v0.4.0** — Phase 3: контент, поставки, документы, продавец, аналитика рейтинга, эквайринг (+10 инструментов = 28) ✅ **проверено на живом WB API 2026-05-25**
 - **v0.4.2** — get_incomes (+1 = 29) — ⚠️ удалён в v0.4.3, endpoint WB отключил без замены
 - **v0.4.3** — FBW-поставки (5 методов), платная приёмка, коэффициенты приёмки. Удалён get_incomes. (+7, -1 = 35) ✅ **проверено на живом WB API 2026-06-22**
+- **v0.5.0** — Streamable HTTP + Bearer auth + `READ_ONLY` + session TTL/max + Docker image
 
 ---
 
