@@ -46,6 +46,8 @@ export async function listenHttpMcp(options: HttpListenOptions): Promise<HttpLis
 
   const requireAuth = createBearerAuthMiddleware(config.authToken);
   const sessions = new Map<string, SessionEntry>();
+  /** Slots reserved by in-flight initialize before the session is inserted into `sessions`. */
+  let pendingAdmissions = 0;
 
   const destroySession = async (sid: string, reason: string): Promise<void> => {
     const entry = sessions.get(sid);
@@ -131,7 +133,9 @@ export async function listenHttpMcp(options: HttpListenOptions): Promise<HttpLis
       if (isInitializeRequest(req.body)) {
         await sweepIdleSessions();
 
-        if (sessions.size >= sessionMax) {
+        // Reserve a slot synchronously before any await so concurrent initialize
+        // cannot all pass a size check and exceed sessionMax.
+        if (sessions.size + pendingAdmissions >= sessionMax) {
           res.status(503).json({
             jsonrpc: "2.0",
             error: {
@@ -142,30 +146,44 @@ export async function listenHttpMcp(options: HttpListenOptions): Promise<HttpLis
           });
           return;
         }
-
-        const { mcpServer } = createConfiguredMcpServer(token, version, toolOpts);
-        const transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-          onsessioninitialized: (newSid) => {
-            sessions.set(newSid, {
-              transport,
-              mcpServer,
-              lastAccessAt: now(),
-            });
-          },
-        });
-
-        transport.onclose = () => {
-          const closedId = transport.sessionId;
-          if (!closedId) return;
-          const entry = sessions.get(closedId);
-          if (!entry) return;
-          sessions.delete(closedId);
-          void entry.mcpServer.close().catch(() => undefined);
+        pendingAdmissions += 1;
+        let reservationConsumed = false;
+        const releaseReservation = (): void => {
+          if (reservationConsumed) return;
+          reservationConsumed = true;
+          pendingAdmissions -= 1;
         };
 
-        await mcpServer.connect(transport);
-        await transport.handleRequest(req, res, req.body);
+        try {
+          const { mcpServer } = createConfiguredMcpServer(token, version, toolOpts);
+          const transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => randomUUID(),
+            onsessioninitialized: (newSid) => {
+              sessions.set(newSid, {
+                transport,
+                mcpServer,
+                lastAccessAt: now(),
+              });
+              // Slot moves from pending → established.
+              releaseReservation();
+            },
+          });
+
+          transport.onclose = () => {
+            const closedId = transport.sessionId;
+            if (!closedId) return;
+            const entry = sessions.get(closedId);
+            if (!entry) return;
+            sessions.delete(closedId);
+            void entry.mcpServer.close().catch(() => undefined);
+          };
+
+          await mcpServer.connect(transport);
+          await transport.handleRequest(req, res, req.body);
+        } finally {
+          // Initialize failed or never reached onsessioninitialized — free the slot.
+          releaseReservation();
+        }
         return;
       }
 

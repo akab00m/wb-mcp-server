@@ -208,6 +208,24 @@ describe("HTTP MCP integration", () => {
     expect(health.sessions).toBe(2);
   });
 
+  it("enforces sessionMax under concurrent initialize", async () => {
+    const max = 2;
+    await start({ sessionMax: max, sessionIdleTtlMs: 0 });
+
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () => postMcp(initBody)),
+    );
+
+    const ok = results.filter((r) => r.status === 200);
+    const rejected = results.filter((r) => r.status === 503);
+    expect(ok).toHaveLength(max);
+    expect(rejected).toHaveLength(12 - max);
+    expect(new Set(ok.map((r) => r.sessionId).filter(Boolean)).size).toBe(max);
+
+    const health = (await (await fetch(`${baseUrl}/health`)).json()) as { sessions: number };
+    expect(health.sessions).toBe(max);
+  });
+
   it("expires idle sessions and frees capacity", async () => {
     let clock = 1_000_000;
     await start({

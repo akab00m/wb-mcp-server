@@ -34,7 +34,7 @@ export interface ServerConfig {
     allowedHosts: string[];
     /** Close sessions with no requests for this long (ms). 0 disables idle TTL. */
     sessionIdleTtlMs: number;
-    /** Max concurrent MCP sessions. New initialize → 503 when full (after idle sweep). */
+    /** Max concurrent MCP sessions (established + in-flight initialize). New initialize → 503 when full (after idle sweep). */
     sessionMax: number;
   };
 }
