@@ -27,11 +27,14 @@ async function main(): Promise<void> {
     process.stderr.write(
       `Ошибка: ${message}\n\n` +
         `Установите WB_API_TOKEN или --token=<токен>.\n` +
-        `Для HTTP: MCP_TRANSPORT=http и MCP_AUTH_TOKEN=<секрет>.\n` +
-        `Опционально: READ_ONLY=true, MCP_HTTP_PORT=3000, MCP_ALLOWED_HOSTS=wb-mcp\n\n` +
+        `Для HTTP: MCP_TRANSPORT=http, MCP_AUTH_TOKEN=<секрет>.\n` +
+        `При MCP_HTTP_HOST=0.0.0.0 обязателен MCP_ALLOWED_HOSTS=<имя-сервиса>.\n` +
+        `Опционально: READ_ONLY=true, MCP_HTTP_PORT=3000\n\n` +
         `Error: ${message}\n` +
         `Set WB_API_TOKEN or --token=<token>.\n` +
-        `For HTTP: MCP_TRANSPORT=http and MCP_AUTH_TOKEN=<secret>.\n`,
+        `For HTTP: MCP_TRANSPORT=http, MCP_AUTH_TOKEN=<secret>.\n` +
+        `When MCP_HTTP_HOST=0.0.0.0, MCP_ALLOWED_HOSTS=<service-name> is required.\n` +
+        `Optional: READ_ONLY=true, MCP_HTTP_PORT=3000\n`,
     );
     process.exit(1);
   }
