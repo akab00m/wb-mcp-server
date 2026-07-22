@@ -17,6 +17,8 @@ ENV NODE_ENV=production \
     MCP_HTTP_PORT=3000 \
     MCP_HTTP_PATH=/mcp
 # MCP_AUTH_TOKEN, WB_API_TOKEN, MCP_ALLOWED_HOSTS must be provided at runtime
+# (image binds 0.0.0.0; without MCP_ALLOWED_HOSTS the process exits).
+# Optional: MCP_SESSION_MAX (32), MCP_SESSION_IDLE_TTL_MS (1800000)
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist

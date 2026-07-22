@@ -15,6 +15,8 @@
 ### Notes
 
 - Stdio остаётся транспортом по умолчанию вне Docker-образа (обратная совместимость с Claude Desktop).
+- Docker-образ задаёт `MCP_TRANSPORT=http` + `READ_ONLY=true` + `MCP_HTTP_HOST=0.0.0.0` — на runtime обязательны `WB_API_TOKEN`, `MCP_AUTH_TOKEN`, `MCP_ALLOWED_HOSTS`.
+- Default `MCP_HTTP_HOST=0.0.0.0` в коде: локальный HTTP без allowlist — передайте `--host=127.0.0.1`.
 - Рекомендуется read-only WB API token + `READ_ONLY=true` для HTTP-деплоя.
 
 ## 0.4.3 (2026-06-22)

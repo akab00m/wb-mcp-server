@@ -200,24 +200,30 @@ Ask your AI agent (after connecting the MCP server):
 | Variable | Description | Required |
 |---|---|---|
 | `WB_API_TOKEN` | Wildberries Seller API token | Yes |
-| `MCP_TRANSPORT` | `stdio` (default) or `http` | No |
+| `MCP_TRANSPORT` | `stdio` (default outside Docker image) or `http` | No |
 | `MCP_AUTH_TOKEN` | Bearer secret for HTTP mode | Yes if `http` |
-| `READ_ONLY` | `true` — skip write tools | No |
-| `MCP_HTTP_HOST` | Bind address (Docker: `0.0.0.0`) | No (`0.0.0.0`) |
+| `READ_ONLY` / `WB_MCP_READ_ONLY` | `true` — skip write tools | No |
+| `MCP_HTTP_HOST` | Bind address. Default `0.0.0.0`. Use `127.0.0.1` for local HTTP without allowlist | No |
 | `MCP_HTTP_PORT` | HTTP port | No (`3000`) |
 | `MCP_HTTP_PATH` | MCP endpoint path | No (`/mcp`) |
-| `MCP_ALLOWED_HOSTS` | Extra allowed Host headers (comma-separated) | No* |
+| `MCP_ALLOWED_HOSTS` | Extra allowed Host headers. `localhost`/`127.0.0.1` always included | Yes* if host ≠ loopback |
 | `MCP_SESSION_IDLE_TTL_MS` | Idle session TTL (ms), `0` disables | No (`1800000`) |
-| `MCP_SESSION_MAX` | Max concurrent MCP sessions | No (`32`) |
+| `MCP_SESSION_MAX` | Max concurrent MCP sessions; over limit `initialize` → 503 | No (`32`) |
 
-\* Required when `MCP_HTTP_HOST` is not loopback.
+\* With default `MCP_HTTP_HOST=0.0.0.0`, missing `MCP_ALLOWED_HOSTS` makes the process **exit on startup**.
 
-CLI: `wb-mcp-server --token=your_token`  
-HTTP: `wb-mcp-server --transport=http --auth-token=secret --read-only`
+CLI:
+```bash
+wb-mcp-server --token=your_token
+# local HTTP
+wb-mcp-server --transport=http --auth-token=secret --read-only --host=127.0.0.1
+# Docker-like bind
+wb-mcp-server --transport=http --auth-token=secret --read-only --host=0.0.0.0 --allowed-hosts=wb-mcp
+```
 
-See `examples/docker-compose.yml` and `Dockerfile` for container-to-container setup.
-Client: `Authorization: Bearer <MCP_AUTH_TOKEN>`, `Accept: application/json, text/event-stream`, then pass `mcp-session-id` after initialize.
-Health: `GET /health`. Do not publish the MCP port. Non-loopback bind requires `MCP_ALLOWED_HOSTS` (Docker service name) or Host checks return 403.
+See `examples/docker-compose.yml` and `Dockerfile`.  
+Client: `Authorization: Bearer <MCP_AUTH_TOKEN>`, `Accept: application/json, text/event-stream`, then `mcp-session-id` after initialize (`POST|GET|DELETE /mcp`).  
+Health: `GET /health` (no auth) returns `sessions`, `sessionMax`, `sessionIdleTtlMs`. Do not publish the MCP port.
 
 ## Development
 
