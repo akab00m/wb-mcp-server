@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS build
+FROM node:22.23.4-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -8,7 +8,12 @@ COPY tsconfig.json tsup.config.ts ./
 COPY src ./src
 RUN npm run build && npm prune --omit=dev
 
-FROM node:20-alpine
+FROM node:22.23.4-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+# Процесс — node, не npm. Глобальный npm Node 22.23.4 всё ещё тащит
+# brace-expansion 2.0.2, pacote 19 и http-cache-semantics 4.2; в рантайме их нет.
+USER root
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /app
 ENV NODE_ENV=production \
     MCP_TRANSPORT=http \
