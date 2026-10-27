@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1 (2026-10-27)
+
+### Безопасность
+
+- Docker: `node:20-alpine` (20.20.2, тег не обновлялся с 2026-04-15) → `node:22.23.4-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914`. В этом образе npm 10.9.9 с `tar` 7.5.22 (OSV: CVE-2026-59873 закрыт в 7.5.19, GHSA-r292-9mhp-454m — в 7.5.21). Alpine 3.24 этого тега несёт openssl 3.5.9-r0. Глобальный npm из рантайма убран: процесс его не вызывает, а brace-expansion 2.0.2 в нём ещё уязвим.
+- Lockfile, диапазоны `package.json` те же: `@modelcontextprotocol/sdk` 1.32.2, `proxy-addr` 2.0.8 (CVE-2026-90711), `fast-uri` 3.1.9, `hono` 4.13.14, `zod` 4.6.7, `body-parser` 2.4.0, `path-to-regexp` 8.4.2, `ip-address` 10.7.5. `npm audit --omit=dev` после этого: 0.
+
+issue #1177
+
 ## 0.5.0 (2026-07-22)
 
 ### Features
